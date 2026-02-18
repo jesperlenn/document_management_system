@@ -9,6 +9,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        working-directory: Build docker images in src/ dir
-        context: src/
-        run: docker compose build --pull
+
+      - name: Build docker images in src/
+        working-directory: src
+        run: docker compose -f docker-compose-build-all.yaml build --pull
