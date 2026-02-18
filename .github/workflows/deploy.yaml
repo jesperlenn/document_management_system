@@ -36,7 +36,7 @@ jobs:
         working-directory: src
         run: docker compose -f ${{ env.COMPOSE_FILE }} build
 
-      - name: Tag all images with :${{ github.sha }} and :latest
+      - name: Tag and push images to registry with :${{ github.sha }} and :latest
         working-directory: src
         run: |
           set -euo pipefail
@@ -44,6 +44,8 @@ jobs:
           IMAGES="$(docker compose -f ${{ env.COMPOSE_FILE }} config --images)"
           echo "Images from compose:"
           echo "$IMAGES"
+
+          REGISTRY="${{ env.REGISTRY }}"
 
           # Give every image a tag
           # <image>:latest
@@ -54,29 +56,19 @@ jobs:
             if echo "$img" | grep -qE ':[^/]+$'; then
               base="${img%:*}"
             fi
-            echo "Tagging $img -> $base:latest and $base:${GITHUB_SHA}"
-            docker tag "$img" "$base:latest"
-            docker tag "$img" "$base:${GITHUB_SHA}"
-          done <<< "$IMAGES"
 
-      - name: Push all images (latest + sha)
-        working-directory: src
-        run: |
-          set -euo pipefail
+            # Strip registry if already present
+            base_no_registry="${base#*/}"
 
-          IMAGES="$(docker compose -f ${{ env.COMPOSE_FILE }} config --images)"
-          while IFS= read -r img; do
-            [ -z "$img" ] && continue
+            full="$REGISTRY/$base_no_registry"
 
-            base="$img"
-            if echo "$img" | grep -qE ':[^/]+$'; then
-                base="${img%:*}"
-            fi
-
-            echo "Pushing $base:latest"
-            docker push "$base:latest"
-            echo "Pushing $base:${GITHUB_SHA}"
-            docker push "$base:${GITHUB_SHA}"
+            echo "Tagging $img -> $full:latest and $full:${GITHUB_SHA}"
+            docker tag "$img" "$full:latest"
+            docker tag "$img" "$full:${GITHUB_SHA}"
+            echo "Pushing $full:latest"
+            docker push "$full:latest"
+            echo "Pushing $full:${GITHUB_SHA}"
+            docker push "$full:${GITHUB_SHA}"
           done <<< "$IMAGES"
 
       - name: Trigger deploy webhook (HMAC SHA-256)
