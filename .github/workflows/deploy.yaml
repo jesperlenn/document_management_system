@@ -51,6 +51,9 @@ jobs:
           while IFS= read -r img; do
             [ -z "$img" ] && continue
             base="$img"
+            if echo "$img" | grep -qE ':[^/]+$'; then
+              base="${img%:*}"
+            fi
             echo "Tagging $img -> $base:latest and $base:${GITHUB_SHA}"
             docker tag "$img" "$base:latest"
             docker tag "$img" "$base:${GITHUB_SHA}"
